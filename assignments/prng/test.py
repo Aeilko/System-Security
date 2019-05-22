@@ -6,4 +6,10 @@ state = [True, False, False, True, True, True, False, True, False, True, True, F
 
 l = LFSR(taps, state)
 
-print(to_binary_string(l.next_n(32)))
+# Generate random bits
+bin_string = to_binary_string(l.next_n(10000000))
+
+# Write bits to file for testing
+f = open("LFSRData", "w")
+f.write(bin_string)
+f.close()
