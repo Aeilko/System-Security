@@ -2,7 +2,11 @@
 
 ## Lab: PUF & PRNG
 ### PRNG
+For the PRNG we implemented LFSR, which can be found as a class in the [LFSR.py](assignments/prng/LFSR.py) file.
 
+There is also a [test.py](assignments/prng/test.py) file, which is actually runnable.
+Running this file will create a file called LFSRData, which contains 10 million bits from the LFSR.
+This file can be used to perform randomness tests.
 
 ### PUF
 ##### Running an attack
