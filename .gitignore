@@ -3,3 +3,6 @@
 
 # Python
 __pycache__/
+
+# Lab 2, large file
+/assignments/data_lab2/traces.npy
