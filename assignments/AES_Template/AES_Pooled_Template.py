@@ -44,19 +44,6 @@ pt = np.delete(pt, range(9950, 10000), 0)
 a_knownkey = knownkey[9950:10000]
 knownkey = np.delete(knownkey, range(9950, 10000), 0)
 
-
-# print("Plaintext")
-# print(pt)
-# print(len(pt))
-# print("Known Key")
-# print(knownkey)
-# print(len(knownkey))
-# print("Traces")
-# print(traces)
-# print(len(traces))
-# plt.plot(traces[0])
-# plt.show()
-
 # Note - we're only working with the first byte here
 tempSbox = [sbox[pt[i][0] ^ knownkey[i][0]] for i in range(len(pt))]
 tempHW = [hw[s] for s in tempSbox]
@@ -65,7 +52,6 @@ tempHW = [hw[s] for s in tempSbox]
 tempTracesHW = [[] for _ in range(9)]
 
 # Fill the lists
-# print(len(tempHW))
 for i in range(len(traces)):
     HW = tempHW[i]
     tempTracesHW[HW].append(traces[i])
@@ -73,29 +59,20 @@ for i in range(len(traces)):
 # Switch to numpy arrays
 tempTracesHW = [np.array(tempTracesHW[HW]) for HW in range(9)]
 
-# print("Length TracesHW")
-# print(len(tempTracesHW[8]))
-
 # %% Find points of interest
 tempMeans = np.zeros((9, len(traces[0])))
 for i in range(9):
     tempMeans[i] = np.average(tempTracesHW[i], 0)
-
-# plt.plot(tempMeans[2])
-# plt.title("Averages")
-# plt.grid()
-# plt.show()
-
 
 tempSumDiff = np.zeros(len(traces[0]))
 for i in range(9):
     for j in range(i):
         tempSumDiff += np.abs(tempMeans[i] - tempMeans[j])
 
-plt.plot(tempSumDiff)
-plt.title("Sum of differences")
-plt.grid()
-plt.show()
+# plt.plot(tempSumDiff)
+# plt.title("Sum of differences")
+# plt.grid()
+# plt.show()
 
 
 POIs = []
@@ -112,33 +89,20 @@ for i in range(numPOIs):
     for j in range(poiMin, poiMax):
         tempSumDiff[j] = 0
 
-print("POIs")
-print(POIs)
-
-# %% Covariance Matrices
+# %% Covariance Matrix
 meanMatrix = np.zeros((9, numPOIs))
-covMatrix = np.zeros((9, numPOIs, numPOIs))
 for HW in range(9):
     for i in range(numPOIs):
         # Fill in mean
         meanMatrix[HW][i] = tempMeans[HW][POIs[i]]
-        for j in range(numPOIs):
-            x = tempTracesHW[HW][:, POIs[i]]
-            y = tempTracesHW[HW][:, POIs[j]]
-            covMatrix[HW, i, j] = cov(x, y)
 
-# print("meanMatrix")
-# print(meanMatrix)
-# print("covMatrix[0]")
-# print(covMatrix[0])
 
-# %% Perform the attack
-# print("Attack traces")
-# print(a_traces)
-# print("Attack pt")
-# print(a_pt)
-# print("Attack knownkey")
-# print(a_knownkey)
+covMatrix = np.zeros((numPOIs, numPOIs))
+for i in range(numPOIs):
+    for j in range(numPOIs):
+        x = traces[:, POIs[i]]
+        y = traces[:, POIs[j]]
+        covMatrix[i, j] = cov(x, y)
 
 # Running total of log P_k
 P_k = np.zeros(256)
@@ -154,7 +118,7 @@ for j in range(len(a_traces)):
         HW = hw[sbox[a_pt[j][0] ^ k]]
 
         # Find p_{k,j}
-        rv = multivariate_normal(meanMatrix[HW], covMatrix[HW])
+        rv = multivariate_normal(meanMatrix[HW], covMatrix)
         p_kj = rv.pdf(a)
 
         # Add it to running total
