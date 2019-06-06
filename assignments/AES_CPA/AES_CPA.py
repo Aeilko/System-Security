@@ -1,3 +1,4 @@
+# %% Setup and some settings
 import numpy as np
 
 HW = [bin(n).count("1") for n in range(0, 256)]
@@ -23,13 +24,16 @@ sbox=(
 def intermediate(pt, keyguess):
     return sbox[pt ^ keyguess]
 
-traces = np.load("data_lab2/traces.npy")
-pt = np.load("data_lab2/plain.npy")
-knownkey = np.load("data_lab2/key.npy")
+
+# %% Load data
+traces = np.load("../data_lab2/traces.npy")
+pt = np.load("../data_lab2/plain.npy")
+knownkey = np.load("../data_lab2/key.npy")
 
 numtraces = np.shape(traces)[0]-1
 numpoint = np.shape(traces)[1]
 
+# %% Perform CPA
 # Use less than the maximum traces by setting numtraces to something
 numtraces = 100
 

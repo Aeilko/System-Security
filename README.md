@@ -20,3 +20,6 @@ Then, set the following variables:
 - `TEST_SET_SIZE`: The size (amount of input/output pairs) of the test set
 
 The resulting accuracy (for training and test set) will be printed to the console.
+
+## Lab: Side Channel Attacks
+The traces.npy file is missing from the data_lab2 folder since it is a very big file, so you have to place it there yourself. 
