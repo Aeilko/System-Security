@@ -24,14 +24,12 @@ sbox=(
 def intermediate(pt, keyguess):
     return sbox[pt ^ keyguess]
 
-# %% Load data
+# Load data
 traces = np.load("../data_lab2/traces.npy")
 pt = np.load("../data_lab2/plain.npy")
 knownkey = np.load("../data_lab2/key.npy")
 
 numpoint = np.shape(traces)[1]
-
-result = []
 
 for numtraces in [10, 20, 30, 40, 50]:
     print("")
@@ -40,8 +38,8 @@ for numtraces in [10, 20, 30, 40, 50]:
     # Initialize an array with guessing entropies
     ge_list = []
 
-    # Use 10 samples per trace amount
-    for _ in range(0, 10):
+    # Use 3 samples per trace amount
+    for _ in range(0, 3):
 
         # Generate a random sample of trace indices from the tracefile
         trace_sample = random.sample(range(0, len(traces)), numtraces)
@@ -109,8 +107,6 @@ for numtraces in [10, 20, 30, 40, 50]:
         print("GE: ")
         print(ge)
         print("")
-
-        ge_list.append(ge)
     
     print("")
     print("All GE:")

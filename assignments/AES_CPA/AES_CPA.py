@@ -1,5 +1,6 @@
-# %% Setup and some settings
 import numpy as np
+import random
+import json
 
 HW = [bin(n).count("1") for n in range(0, 256)]
 
@@ -24,69 +25,94 @@ sbox=(
 def intermediate(pt, keyguess):
     return sbox[pt ^ keyguess]
 
-
-# %% Load data
+# Load data
 traces = np.load("../data_lab2/traces.npy")
 pt = np.load("../data_lab2/plain.npy")
 knownkey = np.load("../data_lab2/key.npy")
 
-numtraces = np.shape(traces)[0]-1
+sumnum1_store = []
+sumnum2_store = []
+sumnum3_store = []
+sumden1_store = []
+sumden2_store = []
+
 numpoint = np.shape(traces)[1]
+for i in range(0, 16):
+    s1 = []
+    s2 = []
+    s3 = []
+    d1 = []
+    d2 = []
 
-# %% Perform CPA
-# Use less than the maximum traces by setting numtraces to something
-numtraces = 100
+    for _ in range(0, 256):
+        s1.append(np.zeros(numpoint))
+        s2.append(np.zeros(numpoint))
+        s3.append(np.zeros(numpoint))
+        d1.append(np.zeros(numpoint))
+        d2.append(np.zeros(numpoint))
 
-# Set 16 to something lower (like 10 to only go through a single subkey
-bestguess = [0]*16
-pge = [256]*16
-for bnum in range(0, 16):
-    cpaoutput = [0]*256
-    maxcpa = [0]*256
-    for kguess in range(0, 256):
-        # print("Subkey %2d, hyp = %02x: "%(bnum, kguess))
+    sumnum1_store.append(s1)
+    sumnum2_store.append(s2)
+    sumnum3_store.append(s3)
+    sumden1_store.append(d1)
+    sumden2_store.append(d2)
 
-        # Initialize arrays & variables to zero
-        sumnum = np.zeros(numpoint)
-        sumden1 = np.zeros(numpoint)
-        sumden2 = np.zeros(numpoint)
+start_traces = 10
+total_traces = 50
+trace_interval = 2
 
-        hyp = np.zeros(numtraces)
-        for tnum in range(0, numtraces):
-            hyp[tnum] = HW[intermediate(pt[tnum][bnum], kguess)]
+trace_amounts = [start_traces] + [trace_interval for _ in range(0, int((total_traces - start_traces) / trace_interval))]
 
-        # Mean of hypothesis
-        meanh = np.mean(hyp, dtype=np.float64)
+# Add the traces here (loop a certain amount of times before halting and printing intermediate)
+for idx, trace_amount in enumerate(trace_amounts):
+    # Take a new sample of traces
+    current_sample = random.sample(range(0, len(traces)), trace_amount)
+    numtraces = sum(trace_amounts[:idx + 1])
+    
+    print("")
+    print("Number of traces: " + str(numtraces))
 
-        # Mean of all points in trace
-        meant = np.mean(traces, axis=0, dtype=np.float64)
+    bestguess = [0] * 16
+    pge = [256] * 16
+    for bnum in range(0, 16):
+        cpaoutput = [0] * 256
+        maxcpa = [0] * 256
+        for kguess in range(0, 256):
 
-        # For each trace do the following
-        for tnum in range(0, numtraces):
-            hdiff = (hyp[tnum] - meanh)
-            tdiff = traces[tnum, :] - meant
+            # For each trace do the following
+            for idx, tnum in enumerate(current_sample):
+                h = HW[intermediate(pt[tnum][bnum], kguess)]
+                t = traces[tnum, :]
 
-            sumnum = sumnum + (hdiff*tdiff)
-            sumden1 = sumden1 + hdiff*hdiff
-            sumden2 = sumden2 + tdiff*tdiff
+                sumnum1_store[bnum][kguess] = sumnum1_store[bnum][kguess] + h * t
+                sumnum2_store[bnum][kguess] = sumnum2_store[bnum][kguess] + h
+                sumnum3_store[bnum][kguess] = sumnum3_store[bnum][kguess] + t
+                sumden1_store[bnum][kguess] = sumden1_store[bnum][kguess] + h * h
+                sumden2_store[bnum][kguess] = sumden2_store[bnum][kguess] + t * t
 
-        cpaoutput[kguess] = sumnum / np.sqrt(sumden1 * sumden2)
-        maxcpa[kguess] = max(abs(cpaoutput[kguess]))
+            den1 = np.power(sumnum2_store[bnum][kguess], 2)
+            den2 = np.power(sumnum3_store[bnum][kguess], 2)
 
-        # print(maxcpa[kguess])
+            num = numtraces * sumnum1_store[bnum][kguess] - sumnum2_store[bnum][kguess] * sumnum3_store[bnum][kguess]
+            den = np.sqrt((den1 - numtraces * sumden1_store[bnum][kguess]) * (den2 - numtraces * sumden2_store[bnum][kguess]))
+            
+            cpaoutput[kguess] = num / den
 
-    bestguess[bnum] = np.argmax(maxcpa)
+            maxcpa[kguess] = max(abs(cpaoutput[kguess]))
 
-    cparefs = np.argsort(maxcpa)[::-1]
+        bestguess[bnum] = np.argmax(maxcpa)
 
-    # Find PGE
-    pge[bnum] = cparefs[np.where(knownkey[bnum].any())]
+        cparefs = np.argsort(maxcpa)[::-1]
 
-print("Best key guess: ")
-for b in bestguess:
-    print("%02x"%b)
+        pge[bnum] = cparefs.tolist().index(knownkey[0][bnum])
 
-print("")
-print("PGE: ")
-for b in pge:
-    print("%02d "%b)
+    # Calculate Guessing Entropy
+    ge = 1.0
+    for n in pge:
+        if n != 0:
+            ge = ge * n
+
+    ge = 0 if ge == 1 else ge / 2
+
+    print("")
+    print("GE:" + str(ge))
