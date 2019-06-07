@@ -142,8 +142,6 @@ for HW in range(9):
 
 # Running total of log P_k
 P_k = np.zeros(256)
-last_guess = -1
-guess_counter = 0
 for j in range(len(a_traces)):
     # Grab key points and put them in a small matrix
     a = [a_traces[j][POIs[i]] for i in range(len(POIs))]
@@ -163,16 +161,6 @@ for j in range(len(a_traces)):
     # Print our top 5 results so far
     # Best match on the right
     # print(P_k.argsort()[-5:])
-
-    # If we have the same best guess 5 times in a row we can stop
-    cur_guess = P_k.argsort()[-5:][4]
-    if(cur_guess == last_guess):
-        guess_counter += 1
-        if(guess_counter == 5):
-            break
-    else:
-        last_guess = cur_guess
-        guess_counter == 1
 
 print("Best guess")
 print(P_k.argsort()[-5:][4])

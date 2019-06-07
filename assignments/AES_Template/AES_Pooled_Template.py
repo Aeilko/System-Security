@@ -3,6 +3,8 @@ import numpy as np
 from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
 
+import random
+
 # Useful utilities
 sbox = (
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -28,117 +30,122 @@ def cov(x, y):
     return np.cov(x, y)[0][1]
 
 
-# %% Import Data and some preparation
-traces = np.load("../data_lab2/traces.npy")
-pt = np.load("../data_lab2/plain.npy")
-knownkey = np.load("../data_lab2/key.npy")
+lengths = [10, 50, 100, 250, 500, 1000, 2500, 5000, 9900]
+for length in lengths:
+    # %% Import Data and some preparation
+    traces = np.load("../data_lab2/traces.npy")
+    pt = np.load("../data_lab2/plain.npy")
+    knownkey = np.load("../data_lab2/key.npy")
 
-# Somehow an extra trace containing only 0s is loaded, remove it.
-traces = np.delete(traces, 10000, 0)
+    # Somehow an extra trace containing only 0s is loaded, remove it.
+    traces = np.delete(traces, 10000, 0)
 
-# Split the data in train and attack data
-a_traces = traces[9950:10000]
-traces = np.delete(traces, range(9950, 10000), 0)
-a_pt = pt[9950:10000]
-pt = np.delete(pt, range(9950, 10000), 0)
-a_knownkey = knownkey[9950:10000]
-knownkey = np.delete(knownkey, range(9950, 10000), 0)
+    # Split the data in train and attack data
+    a_traces = traces[9900:10000]
+    traces = np.delete(traces, range(9900, 10000), 0)
+    a_pt = pt[9900:10000]
+    pt = np.delete(pt, range(9900, 10000), 0)
+    a_knownkey = knownkey[9900:10000]
+    knownkey = np.delete(knownkey, range(9900, 10000), 0)
 
-# Note - we're only working with the first byte here
-tempSbox = [sbox[pt[i][0] ^ knownkey[i][0]] for i in range(len(pt))]
-tempHW = [hw[s] for s in tempSbox]
-
-# Make 9 blank lists - one for each Hamming weight
-tempTracesHW = [[] for _ in range(9)]
-
-# Fill the lists
-for i in range(len(traces)):
-    HW = tempHW[i]
-    tempTracesHW[HW].append(traces[i])
-
-# Switch to numpy arrays
-tempTracesHW = [np.array(tempTracesHW[HW]) for HW in range(9)]
-
-# %% Find points of interest
-tempMeans = np.zeros((9, len(traces[0])))
-for i in range(9):
-    tempMeans[i] = np.average(tempTracesHW[i], 0)
-
-tempSumDiff = np.zeros(len(traces[0]))
-for i in range(9):
-    for j in range(i):
-        tempSumDiff += np.abs(tempMeans[i] - tempMeans[j])
-
-# plt.plot(tempSumDiff)
-# plt.title("Sum of differences")
-# plt.grid()
-# plt.show()
+    # Select random starting point to prevent only using the first x traces every time.
+    start = random.randint(0, (9900 - length))
+    traces = traces[start:start+length]
+    pt = pt[start:start+length]
+    knownkey = knownkey[start:start+length]
+    print("Pooled template attack with training length " + str(length) + " [" + str(start) + ", " + str(start+length) + "]")
 
 
-POIs = []
-numPOIs = 5
-POIspacing = 5
-for i in range(numPOIs):
-    # Find the max
-    nextPOI = tempSumDiff.argmax()
-    POIs.append(nextPOI)
+    # Note - we're only working with the first byte here
+    tempSbox = [sbox[pt[i][0] ^ knownkey[i][0]] for i in range(len(pt))]
+    tempHW = [hw[s] for s in tempSbox]
 
-    # Make sure we don't pick a nearby value
-    poiMin = max(0, nextPOI - POIspacing)
-    poiMax = min(nextPOI + POIspacing, len(tempSumDiff))
-    for j in range(poiMin, poiMax):
-        tempSumDiff[j] = 0
+    # Make 9 blank lists - one for each Hamming weight
+    tempTracesHW = [[] for _ in range(9)]
 
-# %% Covariance Matrix
-meanMatrix = np.zeros((9, numPOIs))
-for HW in range(9):
+    # Fill the lists
+    for i in range(len(traces)):
+        HW = tempHW[i]
+        tempTracesHW[HW].append(traces[i])
+
+    # Switch to numpy arrays
+    tempTracesHW = [np.array(tempTracesHW[HW]) for HW in range(9)]
+
+    # %% Find points of interest
+    tempMeans = np.zeros((9, len(traces[0])))
+    for i in range(9):
+        tempMeans[i] = np.average(tempTracesHW[i], 0)
+
+    tempSumDiff = np.zeros(len(traces[0]))
+    for i in range(9):
+        for j in range(i):
+            tempSumDiff += np.abs(tempMeans[i] - tempMeans[j])
+
+    # plt.plot(tempSumDiff)
+    # plt.title("Sum of differences")
+    # plt.grid()
+    # plt.show()
+
+
+    POIs = []
+    numPOIs = 5
+    POIspacing = 5
     for i in range(numPOIs):
-        # Fill in mean
-        meanMatrix[HW][i] = tempMeans[HW][POIs[i]]
+        # Find the max
+        nextPOI = tempSumDiff.argmax()
+        POIs.append(nextPOI)
+
+        # Make sure we don't pick a nearby value
+        poiMin = max(0, nextPOI - POIspacing)
+        poiMax = min(nextPOI + POIspacing, len(tempSumDiff))
+        for j in range(poiMin, poiMax):
+            tempSumDiff[j] = 0
+
+    # %% Covariance Matrix
+    meanMatrix = np.zeros((9, numPOIs))
+    for HW in range(9):
+        for i in range(numPOIs):
+            # Fill in mean
+            meanMatrix[HW][i] = tempMeans[HW][POIs[i]]
 
 
-covMatrix = np.zeros((numPOIs, numPOIs))
-for i in range(numPOIs):
-    for j in range(numPOIs):
-        x = traces[:, POIs[i]]
-        y = traces[:, POIs[j]]
-        covMatrix[i, j] = cov(x, y)
+    covMatrix = np.zeros((numPOIs, numPOIs))
+    for i in range(numPOIs):
+        for j in range(numPOIs):
+            x = traces[:, POIs[i]]
+            y = traces[:, POIs[j]]
+            covMatrix[i, j] = cov(x, y)
 
-# Running total of log P_k
-P_k = np.zeros(256)
-last_guess = -1
-guess_counter = 0
-for j in range(len(a_traces)):
-    # Grab key points and put them in a small matrix
-    a = [a_traces[j][POIs[i]] for i in range(len(POIs))]
+    # Running total of log P_k
+    P_k = np.zeros(256)
+    entropy_total = 0
+    for j in range(len(a_traces)):
+        # Grab key points and put them in a small matrix
+        a = [a_traces[j][POIs[i]] for i in range(len(POIs))]
 
-    # Test each key
-    for k in range(256):
-        # Find HW coming out of sbox
-        HW = hw[sbox[a_pt[j][0] ^ k]]
+        # Test each key
+        for k in range(256):
+            # Find HW coming out of sbox
+            HW = hw[sbox[a_pt[j][0] ^ k]]
 
-        # Find p_{k,j}
-        rv = multivariate_normal(meanMatrix[HW], covMatrix)
-        p_kj = rv.pdf(a)
+            # Find p_{k,j}
+            rv = multivariate_normal(meanMatrix[HW], covMatrix)
+            p_kj = rv.pdf(a)
 
-        # Add it to running total
-        P_k[k] += np.log(p_kj)
+            # Add it to running total
+            P_k[k] += np.log(p_kj)
 
-    # Print our top 5 results so far
-    # Best match on the right
-    # print(P_k.argsort()[-5:])
+        # Print our top 5 results so far
+        # Best match on the right
+        # print(P_k.argsort()[-5:])
+        # print(P_k.argsort())
 
-    # If we have the same best guess 5 times in a row we can stop
-    cur_guess = P_k.argsort()[-5:][4]
-    if(cur_guess == last_guess):
-        guess_counter += 1
-        if(guess_counter == 5):
-            break
-    else:
-        last_guess = cur_guess
-        guess_counter == 1
+        # Calculate entropy
+        ent = P_k.argsort().tolist().index(a_knownkey[0][0])
+        ent = np.abs(ent-(len(P_k)-1))
+        entropy_total += ent
 
-print("Best guess")
-print(P_k.argsort()[-5:][4])
-print("Actual key")
-print(a_knownkey[0])
+    # print("Best guess: " + str(P_k.argsort()[-5:][4]))
+    # print("Actual key: " + str(a_knownkey[0]))
+    print("Guess entropy: " + str(entropy_total/len(a_traces)))
+    print()

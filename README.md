@@ -22,4 +22,12 @@ Then, set the following variables:
 The resulting accuracy (for training and test set) will be printed to the console.
 
 ## Lab: Side Channel Attacks
-The traces.npy file is missing from the data_lab2 folder since it is a very big file, so you have to place it there yourself. 
+The traces.npy file is missing from the data_lab2 folder since it is a very big file, so you have to place it there yourself.
+
+### Pooled Template Attack
+The pooled template attack can be performed by running the [AES_Pooled_Template.py](assignments/AES_Template/AES_Pooled_Template.py) file.
+This will perform multiple pooled template attacks on different datasets en result in the guessing entropy.
+The attack phaase always consists of 100 traces for consistency. 
+
+### Countermeasurments
+Run the file [RSA_attack.py](assignments/SC_countermeasures/RSA_attack.py) to create the timing graphs.
